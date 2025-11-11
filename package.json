@@ -1,0 +1,16 @@
+{
+  "name": "module-starter",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "build": "spacetime build",
+    "generate": "spacetime generate --lang typescript --out-dir build/spacetimedb --project-path .",
+    "publish": "spacetime publish"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "spacetimedb": "^1.7.0"
+  }
+}

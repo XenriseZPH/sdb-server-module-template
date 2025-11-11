@@ -1,0 +1,229 @@
+#!/usr/bin/env node
+
+const fs = require('fs');
+const path = require('path');
+
+// Get command line arguments
+const args = process.argv.slice(2);
+if (args.length < 2) {
+  console.error('Usage: node sdb <command>');
+  console.error('Available commands:');
+  console.error('  make:reducer <name>  - Generate a new reducer');
+  process.exit(1);
+}
+
+const command = args[0];
+
+// Route to appropriate generator
+switch (true) {
+  case command.startsWith('make:reducer'):
+    makeReducer();
+    break;
+  case command.startsWith('make:table'):
+    makeTable();
+    break;
+  case command.startsWith('make:rls'):
+    makeRLS();
+    break;
+  default:
+    console.error(`Unknown command: ${command}`);
+    console.error('Available commands:');
+    console.error('  make:reducer <name>  - Generate a new reducer');
+    process.exit(1);
+}
+
+function makeReducer() {
+  const reducerName = args[1];
+  if (!reducerName) {
+    console.error('Please provide a reducer name: node sdb make:reducer <name>');
+    process.exit(1);
+  }
+
+  // Paths
+  const reducersDir = path.join(process.cwd(), 'src', 'reducers');
+  const reducerFile = path.join(reducersDir, `${reducerName}.ts`);
+  const indexFile = path.join(reducersDir, 'index.ts');
+
+  // Ensure reducers directory exists
+  if (!fs.existsSync(reducersDir)) {
+    fs.mkdirSync(reducersDir, { recursive: true });
+  }
+
+  // Check if reducer file already exists
+  if (fs.existsSync(reducerFile)) {
+    console.error(`Reducer file ${reducerName}.ts already exists!`);
+    process.exit(1);
+  }
+
+  // Template for new reducer
+  const reducerTemplate = `import spacetimedb from "@spacetimedb";
+import { t } from "spacetimedb/server";
+
+// Example reducer - modify as needed
+spacetimedb.reducer("${reducerName}", { name: t.string() }, (ctx, { name }) => {
+  // Add your reducer logic here
+  console.info(\`Processing \${name}\`);
+});
+`;
+
+  // Create the reducer file
+  fs.writeFileSync(reducerFile, reducerTemplate);
+  console.log(`✅ Created reducer file: src/reducers/${reducerName}.ts`);
+
+  // Update index.ts to export the new reducer
+  const exportLine = `export * from "./${reducerName}";`;
+
+  if (fs.existsSync(indexFile)) {
+    const indexContent = fs.readFileSync(indexFile, 'utf8');
+    if (!indexContent.includes(exportLine)) {
+      fs.appendFileSync(indexFile, `\n${exportLine}`);
+      console.log(`✅ Added export to src/reducers/index.ts`);
+    } else {
+      console.log(`ℹ️  Export already exists in src/reducers/index.ts`);
+    }
+  } else {
+    fs.writeFileSync(indexFile, `${exportLine}\n`);
+    console.log(`✅ Created src/reducers/index.ts with export`);
+  }
+
+  console.log(`\n🎉 Reducer "${reducerName}" created successfully!`);
+}
+
+function makeTable() {
+  const tableName = args[1];
+  if (!tableName) {
+    console.error('Please provide a table name: node sdb make:table <name>');
+    process.exit(1);
+  }
+
+  // Paths
+  const tablesDir = path.join(process.cwd(), 'src', 'tables');
+  const tableFile = path.join(tablesDir, `${tableName}.ts`);
+  const indexFile = path.join(tablesDir, 'index.ts');
+
+  // Ensure tables directory exists
+  if (!fs.existsSync(tablesDir)) {
+    fs.mkdirSync(tablesDir, { recursive: true });
+  }
+
+  // Check if table file already exists
+  if (fs.existsSync(tableFile)) {
+    console.error(`Table file ${tableName}.ts already exists!`);
+    process.exit(1);
+  }
+
+  // Template for new table
+  const tableTemplate = `import { t, table } from "spacetimedb/server";
+
+export default table(
+  {
+    name: "${tableName}",
+  },
+  {
+    // Define your table columns here
+    // Example: name: t.string(),
+  }
+);
+`;
+
+  // Create the table file
+  fs.writeFileSync(tableFile, tableTemplate);
+  console.log(`✅ Created table file: src/tables/${tableName}.ts`);
+
+  // Update index.ts to import and add the new table
+  if (fs.existsSync(indexFile)) {
+    let indexContent = fs.readFileSync(indexFile, 'utf8');
+    const importLine = `import ${tableName} from "./${tableName}";`;
+
+    // Check if import already exists
+    if (!indexContent.includes(importLine)) {
+      // Add import after existing imports
+      const lines = indexContent.split('\n');
+      let insertIndex = 0;
+
+      // Find the last import line
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].startsWith('import ') && lines[i].includes('from "./')) {
+          insertIndex = i + 1;
+        }
+      }
+
+      console.log(`insertIndex: ${insertIndex}`);
+
+      lines.splice(insertIndex, 0, importLine);
+
+      // Update the tables array
+      const tablesArrayRegex = /const tables = \[(.*?)\];/s;
+      const match = lines.join('\n').match(tablesArrayRegex);
+
+      if (match) {
+        const currentTables = match[1].trim();
+        const newTablesArray = currentTables ? `${currentTables}, ${tableName}` : tableName;
+        indexContent = lines.join('\n').replace(tablesArrayRegex, `const tables = [${newTablesArray}];`);
+      }
+
+      fs.writeFileSync(indexFile, indexContent);
+      console.log(`✅ Updated src/tables/index.ts with new table`);
+    } else {
+      console.log(`ℹ️  Table already exists in src/tables/index.ts`);
+    }
+  }
+
+  console.log(`\n🎉 Table "${tableName}" created successfully!`);
+}
+
+function makeRLS() {
+  const rlsName = args[1];
+  if (!rlsName) {
+    console.error('Please provide a RLS name: node sdb make:rls <name>');
+    process.exit(1);
+  }
+
+  // Paths
+  const rlsDir = path.join(process.cwd(), 'src', 'rls');
+  const rlsFile = path.join(rlsDir, `${rlsName}.ts`);
+  const indexFile = path.join(rlsDir, 'index.ts');
+
+  // Ensure rls directory exists
+  if (!fs.existsSync(rlsDir)) {
+    fs.mkdirSync(rlsDir, { recursive: true });
+  }
+
+  // Check if rls file already exists
+  if (fs.existsSync(rlsFile)) {
+    console.error(`RLS file ${rlsName}.ts already exists!`);
+    process.exit(1);
+  }
+
+  // Template for new rls
+  const rlsTemplate = `import spacetimedb from "@spacetimedb";
+
+// Example rls - modify as needed
+spacetimedb.clientVisibilityFilter.sql(
+  "SELECT * FROM table_name WHERE column_name = :sender"
+);
+`;
+
+  // Create the rls file
+  fs.writeFileSync(rlsFile, rlsTemplate);
+  console.log(`✅ Created rls file: src/rls/${rlsName}.ts`);
+
+  // Update index.ts to export the new rls
+  const exportLine = `export * from "./${rlsName}";`;
+
+  if (fs.existsSync(indexFile)) {
+    const indexContent = fs.readFileSync(indexFile, 'utf8');
+    if (!indexContent.includes(exportLine)) {
+      fs.appendFileSync(indexFile, `\n${exportLine}`);
+      console.log(`✅ Added export to src/rls/index.ts`);
+    } else {
+      console.log(`ℹ️  Export already exists in src/rls/index.ts`);
+    }
+  } else {
+    fs.writeFileSync(indexFile, `${exportLine}\n`);
+    console.log(`✅ Created src/rls/index.ts with export`);
+  }
+
+  console.log(`\n🎉 RLS "${rlsName}" created successfully!`);
+}
+
