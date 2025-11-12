@@ -8,17 +8,17 @@
 | register them with the schema.
 |
 | Define tables in separate files like:
-| ├── src/tables/person.ts
-| ├── src/tables/user.ts
-| ├── src/tables/message.ts
+| ├── src/tables/sample.ts
+| ├── src/tables/sample2.ts
+| ├── src/tables/sample3.ts
 |
 | Then import and register them here:
 |
-| import person from "./person";
-| import user from "./user";
-| import message from "./message";
+| import sample from "./sample";
+| import sample2 from "./sample2";
+| import sample3 from "./sample3";
 |
-| const tables = [person, user, message];
+| const tables = [sample, sample2, sample3];
 |
 */
 
